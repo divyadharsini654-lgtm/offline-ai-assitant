@@ -1,0 +1,27 @@
+# Python Bytecode and Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# Audio Recordings and temporary buffers
+*.wav
+*.mp3
+*.webm
+*.ogg
+
+# Local Models and Database Files
+data/*.db
+data/*.sqlite3
+models/whisper/*
+models/piper/*.onnx
+models/piper/*.onnx.json
+
+# Environment and Secrets
+.env
+
+# Testing & Logs
+.pytest_cache/
+*.log

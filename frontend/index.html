@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAX – Offline Voice-Based AI Assistant</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <!-- ================= LOADING SCREEN ================= -->
+  <div id="loading-screen" class="loading-overlay">
+    <div class="loading-card glassmorphism">
+      <div class="logo-glow">
+        <div class="logo-circle">
+          <span class="logo-letter">M</span>
+        </div>
+      </div>
+      <h1 class="brand-title">MAX</h1>
+      <p class="brand-subtitle">OFFLINE AI ASSISTANT</p>
+      
+      <p id="loading-status-text" class="loading-status-text">Loading your assistant...</p>
+
+      <div class="checklist-container">
+        <div class="check-item" id="check-cfg">
+          <span class="check-icon">⏳</span>
+          <span class="check-label">Loading configuration</span>
+        </div>
+        <div class="check-item" id="check-mic">
+          <span class="check-icon">⏳</span>
+          <span class="check-label">Initializing microphone</span>
+        </div>
+        <div class="check-item" id="check-whisper">
+          <span class="check-icon">⏳</span>
+          <span class="check-label">Loading Whisper</span>
+        </div>
+        <div class="check-item" id="check-reasoning">
+          <span class="check-icon">⏳</span>
+          <span class="check-label">Initializing reasoning engine</span>
+        </div>
+        <div class="check-item" id="check-piper">
+          <span class="check-icon">⏳</span>
+          <span class="check-label">Loading Piper TTS</span>
+        </div>
+        <div class="check-item" id="check-memory">
+          <span class="check-icon">⏳</span>
+          <span class="check-label">Initializing memory</span>
+        </div>
+        <div class="check-item" id="check-models">
+          <span class="check-icon">⏳</span>
+          <span class="check-label">Checking local models</span>
+        </div>
+      </div>
+
+      <div class="loading-bar-track">
+        <div id="loading-progress-bar" class="loading-bar-fill"></div>
+      </div>
+
+      <div id="loading-ready-msg" class="ready-banner hidden">
+        MAX is ready.
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MAIN APP INTERFACE ================= -->
+  <div id="app-container" class="app-container hidden">
+    <!-- Top Navigation / Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand-badge" title="MAX Offline AI Assistant">
+          <span class="brand-name">MAX</span>
+          <span class="badge-tag">OFFLINE AI</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <!-- Privacy & Offline Indicator -->
+        <div class="offline-badge" title="All models and data operate 100% locally. Zero cloud tracking.">
+          <span class="status-dot green-pulse" aria-hidden="true"></span>
+          <span class="offline-text">● OFFLINE MODE</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- System Status Summary Pill -->
+        <div id="model-status-pill" class="status-pill" title="Click to view model status">
+          <span id="stt-badge" class="mini-badge">Whisper</span>
+          <span id="reasoning-badge" class="mini-badge">Reasoning</span>
+          <span id="tts-badge" class="mini-badge">Piper</span>
+        </div>
+
+        <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Open settings">
+          ⚙️
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="main-content">
+      <!-- Conversation History Panel -->
+      <section class="conversation-panel glassmorphism" aria-label="Conversation and chat controls">
+        <div class="conversation-header">
+          <div class="conv-title-wrap">
+            <span class="panel-icon" aria-hidden="true">💬</span>
+            <h2>Conversation History</h2>
+          </div>
+          <div class="conv-actions">
+            <button id="clear-chat-btn" class="action-btn text-btn" title="Clear conversation history" aria-label="Clear conversation history">
+              🗑️ Clear
+            </button>
+          </div>
+        </div>
+
+        <div id="chat-messages" class="chat-messages" aria-live="polite">
+          <!-- Initial welcome card -->
+          <div class="message-card assistant-message animate-fade">
+            <div class="avatar max-avatar" aria-hidden="true">
+              <span class="avatar-letter">M</span>
+            </div>
+            <div class="message-content">
+              <div class="message-sender">
+                <span class="sender-name">MAX</span>
+                <span class="sender-tag">AI Voice Assistant</span>
+              </div>
+              <div class="message-text">
+                Hello! I am MAX, your local offline AI assistant. I listen with local Whisper, reason offline on your machine, and speak via Piper TTS. How can I help you today?
+              </div>
+              <div class="message-meta">
+                <span class="meta-dot"></span> Offline Inference &bull; 100% Private
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interview & Knowledge Mode Bar -->
+        <div class="mode-select-bar">
+          <div class="mode-group">
+            <label for="mode-select">🎯 Mode:</label>
+            <select id="mode-select" class="glass-select" aria-label="Select Assistant Mode">
+              <option value="general">🌐 General QA &amp; Interview</option>
+              <option value="technical">💻 Technical Interview</option>
+              <option value="coding">⌨️ Coding &amp; Debugging</option>
+              <option value="sql">💾 SQL &amp; DBMS</option>
+              <option value="aptitude">🧮 Aptitude Solver</option>
+              <option value="hr">👔 HR &amp; Self Intro</option>
+              <option value="project">📂 Project Interview</option>
+              <option value="mock">🎯 Mock Interview Session</option>
+            </select>
+          </div>
+
+          <div class="mode-group">
+            <label for="project-select">📁 Project:</label>
+            <select id="project-select" class="glass-select" aria-label="Select Project Context">
+              <option value="payroll">MERN Payroll Management</option>
+              <option value="smart_helmet">AI Smart Helmet</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Quick Command Chips -->
+        <div class="quick-commands-container">
+          <div class="quick-commands-label">
+            <span class="quick-icon">⚡</span> Quick Topics:
+          </div>
+          <div class="quick-commands">
+            <button class="chip pill-chip primary-chip" data-cmd="Start mock interview" aria-label="Start mock interview">
+              <span class="chip-icon">🎯</span> Mock Interview
+            </button>
+            <button class="chip pill-chip" data-cmd="Give me a self introduction" aria-label="Give me a self introduction">
+              <span class="chip-icon">👔</span> Self Introduction
+            </button>
+            <button class="chip pill-chip" data-cmd="What is Python?" aria-label="Ask what is Python">
+              <span class="chip-icon">🐍</span> What is Python?
+            </button>
+            <button class="chip pill-chip" data-cmd="Difference between Java and Python" aria-label="Compare Java and Python">
+              <span class="chip-icon">☕</span> Java vs Python
+            </button>
+            <button class="chip pill-chip" data-cmd="Write SQL query to find second highest salary" aria-label="SQL query second highest salary">
+              <span class="chip-icon">💾</span> SQL 2nd Salary
+            </button>
+            <button class="chip pill-chip" data-cmd="Explain my project" aria-label="Explain my project">
+              <span class="chip-icon">📂</span> My Project
+            </button>
+            <button class="chip pill-chip" data-cmd="A train traveling at 72 km/h crosses a platform. Solve it." aria-label="Solve aptitude question">
+              <span class="chip-icon">🧮</span> Aptitude
+            </button>
+            <button class="chip pill-chip" data-cmd="Python na enna? Simple ah explain pannu" aria-label="Explain Python in Tanglish">
+              <span class="chip-icon">🗣️</span> Tanglish: Python na enna?
+            </button>
+          </div>
+        </div>
+
+        <!-- Floating Modern AI Chat Input -->
+        <div class="floating-input-wrapper">
+          <div id="input-status-hint" class="input-status-hint hidden">
+            <span class="hint-pulse"></span>
+            <span id="input-status-text">Listening...</span>
+          </div>
+
+          <form id="text-input-form" class="floating-ai-input" autocomplete="off">
+            <!-- Microphone Button inside Input with CSS Sound-Wave Effect )) 🎙️ (( -->
+            <button
+              type="button"
+              id="input-mic-btn"
+              class="input-mic-btn"
+              aria-label="Start voice input"
+              title="Voice Input (or press Space outside typing)"
+            >
+              <span class="mic-wave-bracket left-bracket" aria-hidden="true">
+                <span class="bracket-arc arc-2">)</span>
+                <span class="bracket-arc arc-1">)</span>
+              </span>
+              <span class="input-mic-icon-wrapper">
+                <svg class="mic-svg-inner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+              </span>
+              <span class="mic-wave-bracket right-bracket" aria-hidden="true">
+                <span class="bracket-arc arc-1">(</span>
+                <span class="bracket-arc arc-2">(</span>
+              </span>
+            </button>
+
+            <!-- Message Input Field -->
+            <textarea
+              id="chat-input"
+              class="chat-input-field"
+              rows="1"
+              placeholder="Ask MAX anything..."
+              data-placeholder-default="Ask MAX anything..."
+              data-placeholder-focus="Type your question here..."
+              autocomplete="off"
+              aria-label="Ask MAX anything"
+            ></textarea>
+
+            <!-- Modern Circular Send Button -->
+            <button
+              type="submit"
+              id="send-btn"
+              class="send-btn circular-send-btn"
+              aria-label="Send message"
+              title="Send message (Enter)"
+              disabled
+            >
+              <svg class="send-arrow-svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+              </svg>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Center Voice Sphere & Control Panel -->
+      <section class="voice-center-panel" aria-label="AI Voice Visualizer">
+        <!-- Assistant State Pill -->
+        <div class="state-container">
+          <div id="state-pill" class="state-pill idle">
+            <span class="state-dot" aria-hidden="true"></span>
+            <span id="state-text">Ready</span>
+          </div>
+        </div>
+
+        <!-- Animated Circular Waveform & Mic Core -->
+        <div class="waveform-mic-wrapper">
+          <canvas id="waveform-canvas" width="420" height="420"></canvas>
+          <div class="mic-button-halo"></div>
+          
+          <!-- Outer Sci-Fi Rotating Tech Ring -->
+          <div class="scifi-orbital-ring">
+            <span class="orbital-star s-top" aria-hidden="true">✦</span>
+            <span class="orbital-star s-bottom" aria-hidden="true">✦</span>
+            <div class="orbital-accent-dot d1"></div>
+            <div class="orbital-accent-dot d2"></div>
+            <div class="orbital-accent-dot d3"></div>
+            <div class="orbital-accent-dot d4"></div>
+          </div>
+
+          <!-- Pulsing Rings Layer -->
+          <div class="pulsing-shockwave-ring ring-1"></div>
+          <div class="pulsing-shockwave-ring ring-2"></div>
+          <div class="pulsing-shockwave-ring ring-3"></div>
+
+          <!-- Center Orb / Main Mic Button -->
+          <button id="mic-btn" class="main-mic-btn" title="Click or Press Space to speak" aria-label="Start voice input">
+            <div class="center-core-orb">
+              <span class="center-avatar-letter">M</span>
+              <svg class="mic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </div>
+          </button>
+        </div>
+
+        <!-- Dynamic Live Transcription & State Feedback Box -->
+        <div class="feedback-container">
+          <div id="live-transcription-box" class="transcription-subtitle">
+            "Click microphone or press Space to talk"
+          </div>
+
+          <!-- Animated Waveform Bar Indicator (visible when speaking / listening) -->
+          <div id="speaking-waveform-indicator" class="speaking-waveform-indicator hidden" aria-hidden="true">
+            <span class="speaker-icon">🔊</span>
+            <span class="speaker-label">MAX is speaking</span>
+            <span class="speaking-waves-text">
+              <span class="wave-token w1">)))</span>
+              <span class="wave-token w2">)))</span>
+              <span class="wave-token w3">)))</span>
+              <span class="wave-token w4">)))</span>
+            </span>
+            <span class="audio-equalizer-bars">
+              <span class="eq-bar b1"></span>
+              <span class="eq-bar b2"></span>
+              <span class="eq-bar b3"></span>
+              <span class="eq-bar b4"></span>
+              <span class="eq-bar b5"></span>
+              <span class="eq-bar b6"></span>
+              <span class="eq-bar b7"></span>
+              <span class="eq-bar b8"></span>
+            </span>
+          </div>
+
+          <!-- Thinking Dots Indicator (visible when thinking) -->
+          <div id="thinking-indicator" class="thinking-indicator hidden" aria-hidden="true">
+            <span class="thinking-spinner">◌</span>
+            <span class="thinking-label">MAX is thinking</span>
+            <span class="thinking-dots">
+              <span class="dot d1">•</span>
+              <span class="dot d2">•</span>
+              <span class="dot d3">•</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Voice Action Buttons -->
+        <div class="voice-action-bar">
+          <button id="stop-speaking-btn" class="control-btn stop-btn" title="Stop MAX from speaking (Esc)" aria-label="Stop MAX speaking">
+            ⏹ Stop Speaking
+          </button>
+        </div>
+
+        <!-- Privacy & Local Hardware Footer -->
+        <div class="local-specs-footer">
+          <span>🔒 100% Local Inference</span>
+          <span>•</span>
+          <span id="mojo-spec">Mojo SIMD Enabled</span>
+          <span>•</span>
+          <span>SQLite Memory</span>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= SETTINGS MODAL ================= -->
+    <div id="settings-modal" class="modal-overlay hidden">
+      <div class="modal-card glassmorphism">
+        <div class="modal-header">
+          <h3>⚙️ MAX Configuration & Models</h3>
+          <button id="close-modal-btn" class="close-btn">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="setting-group">
+            <label for="whisper-model-select">Whisper STT Model</label>
+            <select id="whisper-model-select" class="custom-select">
+              <option value="tiny">tiny (Fastest, ~75MB)</option>
+              <option value="base" selected>base (Balanced, ~140MB)</option>
+              <option value="small">small (High accuracy, ~460MB)</option>
+            </select>
+          </div>
+
+          <div class="setting-group">
+            <label for="ollama-model-input">Ollama LLM Model</label>
+            <input type="text" id="ollama-model-input" class="custom-input" value="llama3.2" placeholder="e.g. llama3.2, mistral, phi3" />
+          </div>
+
+          <div class="setting-group">
+            <label for="piper-voice-display">Piper TTS Voice</label>
+            <input type="text" id="piper-voice-display" class="custom-input" value="en_US-lessac-medium" readonly />
+            <small class="hint-text">Piper ONNX neural voice with local pyttsx3 fallback</small>
+          </div>
+
+          <div class="setting-group checkbox-group">
+            <label class="switch-label">
+              <input type="checkbox" id="wake-word-toggle" />
+              <span class="slider"></span>
+              <span class="switch-text">Enable "Hey MAX" Wake Word</span>
+            </label>
+          </div>
+
+          <div class="diagnostics-box">
+            <h4>Diagnostics Status</h4>
+            <div id="diagnostics-content" class="diagnostics-content">Loading...</div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="save-settings-btn" class="primary-btn">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
