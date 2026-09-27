@@ -17,6 +17,7 @@ const state = {
   currentAudioPlayer: null,
   ws: null,
   modelsStatus: {},
+  currentAttachment: null,
 };
 
 // UI State labels and subtitle mapping
@@ -77,8 +78,15 @@ const elements = {
   sendBtn: document.getElementById("send-btn"),
   clearChatBtn: document.getElementById("clear-chat-btn"),
 
+  attachBtn: document.getElementById("chat-attach-btn"),
+  attachmentInput: document.getElementById("chat-attachment-input"),
+  attachmentPreview: document.getElementById("attachment-preview"),
+  attachmentName: document.getElementById("attachment-name"),
+  removeAttachmentBtn: document.getElementById("remove-attachment-btn"),
+
   modeSelect: document.getElementById("mode-select"),
   projectSelect: document.getElementById("project-select"),
+  thinkToggleBtn: document.getElementById("think-toggle-btn"),
 
   settingsBtn: document.getElementById("settings-btn"),
   settingsModal: document.getElementById("settings-modal"),
@@ -277,6 +285,7 @@ function setAssistantState(newState, customSubtitle) {
     if (elements.inputStatusHint) elements.inputStatusHint.classList.add("hidden");
     if (elements.micBtn) elements.micBtn.classList.remove("active");
     if (elements.inputMicBtn) elements.inputMicBtn.classList.remove("active", "listening");
+    if (elements.sendBtn) elements.sendBtn.classList.remove("listening");
   } else if (newState === "LISTENING" || newState === "RECORDING") {
     if (elements.speakingWaveformIndicator) elements.speakingWaveformIndicator.classList.add("hidden");
     if (elements.thinkingIndicator) elements.thinkingIndicator.classList.add("hidden");
@@ -286,6 +295,7 @@ function setAssistantState(newState, customSubtitle) {
     }
     if (elements.micBtn) elements.micBtn.classList.add("active");
     if (elements.inputMicBtn) elements.inputMicBtn.classList.add("active", "listening");
+    if (elements.sendBtn) elements.sendBtn.classList.add("listening");
   } else if (newState === "THINKING" || newState === "TRANSCRIBING") {
     if (elements.speakingWaveformIndicator) elements.speakingWaveformIndicator.classList.add("hidden");
     if (elements.thinkingIndicator) {
@@ -303,6 +313,7 @@ function setAssistantState(newState, customSubtitle) {
     }
     if (elements.micBtn) elements.micBtn.classList.remove("active");
     if (elements.inputMicBtn) elements.inputMicBtn.classList.remove("active", "listening");
+    if (elements.sendBtn) elements.sendBtn.classList.remove("listening");
   } else {
     // IDLE or ERROR
     if (elements.speakingWaveformIndicator) elements.speakingWaveformIndicator.classList.add("hidden");
@@ -310,6 +321,7 @@ function setAssistantState(newState, customSubtitle) {
     if (elements.inputStatusHint) elements.inputStatusHint.classList.add("hidden");
     if (elements.micBtn) elements.micBtn.classList.remove("active");
     if (elements.inputMicBtn) elements.inputMicBtn.classList.remove("active", "listening");
+    if (elements.sendBtn) elements.sendBtn.classList.remove("listening");
   }
 }
 
@@ -611,11 +623,70 @@ async function handleRecordedAudio(blob) {
 }
 
 // ================= CHAT & REASONING PIPELINE =================
+function showThinkingIndicator() {
+  removeThinkingIndicator();
+  const card = document.createElement("div");
+  card.className = "message-card assistant-message thinking-card animate-fade";
+  card.id = "assistant-thinking-indicator";
+
+  const avatar = document.createElement("div");
+  avatar.className = "avatar max-avatar";
+  avatar.setAttribute("aria-hidden", "true");
+  const avatarLetter = document.createElement("span");
+  avatarLetter.className = "avatar-letter";
+  avatarLetter.textContent = "M";
+  avatar.appendChild(avatarLetter);
+
+  const contentBox = document.createElement("div");
+  contentBox.className = "message-content";
+
+  const sender = document.createElement("div");
+  sender.className = "message-sender";
+  const senderName = document.createElement("span");
+  senderName.className = "sender-name";
+  senderName.textContent = "MAX";
+  const senderTag = document.createElement("span");
+  senderTag.className = "sender-tag";
+  senderTag.textContent = "AI Voice Assistant";
+  sender.appendChild(senderName);
+  sender.appendChild(senderTag);
+
+  const text = document.createElement("div");
+  text.className = "message-text thinking-text";
+  text.innerHTML = `
+    <span class="thinking-label">MAX is thinking...</span>
+    <span class="typing-indicator-dots" aria-label="Thinking">
+      <span class="dot d1"></span>
+      <span class="dot d2"></span>
+      <span class="dot d3"></span>
+    </span>
+  `;
+
+  contentBox.appendChild(sender);
+  contentBox.appendChild(text);
+  card.appendChild(avatar);
+  card.appendChild(contentBox);
+
+  elements.chatMessages.appendChild(card);
+  elements.chatMessages.scrollTo({
+    top: elements.chatMessages.scrollHeight,
+    behavior: "smooth",
+  });
+}
+
+function removeThinkingIndicator() {
+  const existing = document.getElementById("assistant-thinking-indicator");
+  if (existing) {
+    existing.remove();
+  }
+}
+
 async function submitQuery(text) {
   const queryText = text.trim();
   if (!queryText) return;
 
   setAssistantState("THINKING", "Processing your query...");
+  showThinkingIndicator();
 
   const selectedMode = elements.modeSelect ? elements.modeSelect.value : "general";
   const selectedProject = elements.projectSelect ? elements.projectSelect.value : "payroll";
@@ -632,6 +703,8 @@ async function submitQuery(text) {
         project_id: selectedProject,
       }),
     });
+
+    removeThinkingIndicator();
 
     if (!res.ok) {
       throw new Error(`Chat API error: ${res.statusText}`);
@@ -651,6 +724,7 @@ async function submitQuery(text) {
     }
   } catch (err) {
     console.error("Chat error:", err);
+    removeThinkingIndicator();
     appendMessage("assistant", "Sorry, an error occurred while generating a response.");
     setAssistantState("ERROR", "Reasoning error occurred.");
   }
@@ -725,6 +799,81 @@ function stopSpeaking() {
 }
 
 // ================= CONVERSATION HISTORY & MESSAGE CARDS =================
+
+// Speak a message via /api/speak (backend TTS) or browser SpeechSynthesis fallback
+async function speakMessageText(text, btn) {
+  if (!text || !text.trim()) return;
+
+  const resetButton = () => {
+    btn.classList.remove("speaking-now");
+    btn.innerHTML = '🔊 <span>Speak</span>';
+    btn.disabled = false;
+  };
+
+  btn.classList.add("speaking-now");
+  btn.innerHTML = '🔊 <span>Playing...</span><span class="speak-wave-indicator" aria-hidden="true"><span></span><span></span><span></span></span>';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch("/api/speak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+
+    if (res.ok) {
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      state.currentAudioPlayer = audio;
+      setAssistantState("SPEAKING", "MAX is speaking...");
+
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        state.currentAudioPlayer = null;
+        setAssistantState("IDLE", "Ready");
+        resetButton();
+      };
+
+      audio.onerror = () => {
+        state.currentAudioPlayer = null;
+        resetButton();
+        setAssistantState("IDLE", "Ready");
+      };
+
+      audio.play().catch(() => {
+        fallbackBrowserSpeak(text, btn, resetButton);
+      });
+    } else {
+      // Fallback: browser Web Speech API
+      fallbackBrowserSpeak(text, btn, resetButton);
+    }
+  } catch (e) {
+    fallbackBrowserSpeak(text, btn, resetButton);
+  }
+}
+
+function fallbackBrowserSpeak(text, btn, onFinish) {
+  if (!window.speechSynthesis) {
+    if (onFinish) onFinish();
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1.0;
+  utter.pitch = 1.0;
+  utter.onend = () => {
+    if (onFinish) onFinish();
+    setAssistantState("IDLE", "Ready");
+  };
+  utter.onerror = () => {
+    if (onFinish) onFinish();
+    setAssistantState("IDLE", "Ready");
+  };
+  setAssistantState("SPEAKING", "MAX is speaking...");
+  window.speechSynthesis.speak(utter);
+}
+
 function appendMessage(role, content) {
   const card = document.createElement("div");
   card.className = `message-card ${role === "user" ? "user-message" : "assistant-message"}`;
@@ -732,7 +881,10 @@ function appendMessage(role, content) {
   const avatar = document.createElement("div");
   avatar.className = `avatar ${role === "user" ? "user-avatar" : "max-avatar"}`;
   avatar.setAttribute("aria-hidden", "true");
-  avatar.textContent = role === "user" ? "U" : "M";
+  const avatarLetter = document.createElement("span");
+  avatarLetter.className = "avatar-letter";
+  avatarLetter.textContent = role === "user" ? "U" : "M";
+  avatar.appendChild(avatarLetter);
 
   const contentBox = document.createElement("div");
   contentBox.className = "message-content";
@@ -752,17 +904,32 @@ function appendMessage(role, content) {
     sender.appendChild(senderTag);
   }
 
+  // Timestamp
+  const timeTag = document.createElement("span");
+  timeTag.className = "msg-timestamp";
+  const now = new Date();
+  timeTag.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  sender.appendChild(timeTag);
+
   const text = document.createElement("div");
   text.className = "message-text";
-  text.textContent = content;
+
+  // 🔊 Speak button
+  const speakBtn = document.createElement("button");
+  speakBtn.className = "msg-speak-btn";
+  speakBtn.innerHTML = '🔊 <span>Speak</span>';
+  speakBtn.title = "Click to hear MAX read this message";
+  speakBtn.setAttribute("aria-label", "Speak this message");
+  speakBtn.addEventListener("click", () => speakMessageText(content, speakBtn));
 
   const meta = document.createElement("div");
   meta.className = "message-meta";
   if (role === "assistant") {
     meta.innerHTML = '<span class="meta-dot"></span> Offline Inference &bull; 100% Private';
   } else {
-    meta.textContent = "Local Speech / Input";
+    meta.innerHTML = '<span class="meta-dot user-dot"></span> Local Speech / Input';
   }
+  meta.appendChild(speakBtn);
 
   contentBox.appendChild(sender);
   contentBox.appendChild(text);
@@ -772,6 +939,30 @@ function appendMessage(role, content) {
   card.appendChild(contentBox);
 
   elements.chatMessages.appendChild(card);
+
+  // Typewriter effect for assistant messages, instant for user
+  if (role === "assistant") {
+    let i = 0;
+    const speed = 15; // ms per character
+    const cursor = document.createElement("span");
+    cursor.className = "typing-cursor";
+    cursor.textContent = "▋";
+    text.appendChild(cursor);
+
+    function typeChar() {
+      if (i < content.length) {
+        cursor.before(document.createTextNode(content[i]));
+        i++;
+        elements.chatMessages.scrollTo({ top: elements.chatMessages.scrollHeight, behavior: "smooth" });
+        setTimeout(typeChar, speed);
+      } else {
+        cursor.remove();
+      }
+    }
+    typeChar();
+  } else {
+    text.textContent = content;
+  }
 
   // Auto-scroll smoothly to newest message
   elements.chatMessages.scrollTo({
@@ -813,14 +1004,36 @@ async function clearConversation() {
             <span class="sender-tag">AI Voice Assistant</span>
           </div>
           <div class="message-text">Conversation history cleared. Ready for your next query.</div>
-          <div class="message-meta"><span class="meta-dot"></span> Offline Memory Reset</div>
+          <div class="message-meta">
+            <span class="meta-dot"></span> Offline Memory Reset
+            <button class="msg-speak-btn" title="Click to hear MAX read this message" aria-label="Speak this message">
+              🔊 <span>Speak</span>
+            </button>
+          </div>
         </div>
       </div>
     `;
+    bindStaticSpeakButtons();
     setAssistantState("IDLE", "Conversation cleared.");
   } catch (err) {
     console.error("Clear conversation error:", err);
   }
+}
+
+// Bind click event to any static or dynamically inserted speak buttons
+function bindStaticSpeakButtons() {
+  document.querySelectorAll("#chat-messages .msg-speak-btn").forEach((btn) => {
+    if (!btn.dataset.bound) {
+      btn.dataset.bound = "true";
+      btn.addEventListener("click", () => {
+        const card = btn.closest(".message-card");
+        const textEl = card ? card.querySelector(".message-text") : null;
+        if (textEl) {
+          speakMessageText(textEl.textContent.trim(), btn);
+        }
+      });
+    }
+  });
 }
 
 // ================= EVENT LISTENERS & SHORTCUTS =================
@@ -840,58 +1053,174 @@ function setupEventListeners() {
     elements.stopSpeakingBtn.addEventListener("click", stopSpeaking);
   }
 
-  // Message input typing, auto-resize, Enter sending & placeholder focus handling
+  // Bind initial welcome card speak button
+  bindStaticSpeakButtons();
+
+  // 🧠 Think Mode Toggle Button
+  if (elements.thinkToggleBtn) {
+    elements.thinkToggleBtn.addEventListener("click", () => {
+      state.isDeepThinking = !state.isDeepThinking;
+      elements.thinkToggleBtn.classList.toggle("active", state.isDeepThinking);
+      if (state.isDeepThinking) {
+        if (elements.modeSelect && elements.modeSelect.value === "general") {
+          elements.modeSelect.value = "technical";
+        }
+      }
+    });
+  }
+
+  // Message input typing, auto-resize, Enter sending & mode switching
   if (elements.chatInput && elements.sendBtn) {
-    const autoResize = () => {
+    const updateComposerMode = () => {
       elements.chatInput.style.height = "auto";
       const newHeight = Math.min(elements.chatInput.scrollHeight, 120);
       elements.chatInput.style.height = `${newHeight}px`;
+
+      const hasText = elements.chatInput.value.trim().length > 0;
+      const hasAttachment = !!state.currentAttachment;
+      const shouldSend = hasText || hasAttachment;
+
+      if (shouldSend) {
+        elements.sendBtn.classList.remove("mode-voice");
+        elements.sendBtn.classList.add("mode-send");
+        elements.sendBtn.title = "Send message (Enter)";
+        elements.sendBtn.setAttribute("aria-label", "Send message");
+      } else {
+        elements.sendBtn.classList.remove("mode-send");
+        elements.sendBtn.classList.add("mode-voice");
+        elements.sendBtn.title = "Voice Input";
+        elements.sendBtn.setAttribute("aria-label", "Voice Input");
+      }
     };
 
-    elements.chatInput.addEventListener("input", () => {
-      autoResize();
-      const hasText = elements.chatInput.value.trim().length > 0;
-      elements.sendBtn.disabled = !hasText;
-      if (hasText) {
-        elements.sendBtn.classList.add("active");
-      } else {
-        elements.sendBtn.classList.remove("active");
-      }
-    });
+    elements.chatInput.addEventListener("input", updateComposerMode);
 
     // Enter sends message, Shift+Enter creates a new line
     elements.chatInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        if (elements.chatInput.value.trim().length > 0 && elements.chatForm) {
+        const hasText = elements.chatInput.value.trim().length > 0;
+        const hasAttachment = !!state.currentAttachment;
+        if ((hasText || hasAttachment) && elements.chatForm) {
           elements.chatForm.dispatchEvent(new Event("submit", { cancelable: true }));
         }
       }
     });
 
     elements.chatInput.addEventListener("focus", () => {
-      elements.chatInput.placeholder = elements.chatInput.dataset.placeholderFocus || "Type your question here...";
+      elements.chatInput.placeholder = elements.chatInput.dataset.placeholderFocus || "Type a message...";
     });
 
     elements.chatInput.addEventListener("blur", () => {
-      elements.chatInput.placeholder = elements.chatInput.dataset.placeholderDefault || "Ask MAX anything...";
+      elements.chatInput.placeholder = elements.chatInput.dataset.placeholderDefault || "Type a message...";
+    });
+
+    // Circular Blue Voice/Send button click
+    elements.sendBtn.addEventListener("click", (e) => {
+      if (elements.sendBtn.classList.contains("mode-voice")) {
+        e.preventDefault();
+        toggleMicrophone();
+      } else if (elements.sendBtn.classList.contains("mode-send") && elements.chatForm) {
+        e.preventDefault();
+        elements.chatForm.dispatchEvent(new Event("submit", { cancelable: true }));
+      }
+    });
+  }
+
+  // Attachment Button & Input Events
+  if (elements.attachBtn && elements.attachmentInput) {
+    elements.attachBtn.addEventListener("click", () => {
+      elements.attachmentInput.click();
+    });
+
+    elements.attachmentInput.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        state.currentAttachment = file;
+        if (elements.attachmentName) elements.attachmentName.textContent = file.name;
+        if (elements.attachmentPreview) elements.attachmentPreview.classList.remove("hidden");
+        if (elements.sendBtn) {
+          elements.sendBtn.classList.remove("mode-voice");
+          elements.sendBtn.classList.add("mode-send");
+          elements.sendBtn.title = "Send message (Enter)";
+        }
+      }
+    });
+  }
+
+  // Remove attachment button
+  if (elements.removeAttachmentBtn) {
+    elements.removeAttachmentBtn.addEventListener("click", () => {
+      state.currentAttachment = null;
+      if (elements.attachmentInput) elements.attachmentInput.value = "";
+      if (elements.attachmentPreview) elements.attachmentPreview.classList.add("hidden");
+      const hasText = elements.chatInput && elements.chatInput.value.trim().length > 0;
+      if (elements.sendBtn) {
+        if (hasText) {
+          elements.sendBtn.classList.remove("mode-voice");
+          elements.sendBtn.classList.add("mode-send");
+        } else {
+          elements.sendBtn.classList.remove("mode-send");
+          elements.sendBtn.classList.add("mode-voice");
+        }
+      }
     });
   }
 
   // Text input form submission
   if (elements.chatForm) {
-    elements.chatForm.addEventListener("submit", (e) => {
+    elements.chatForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = elements.chatInput.value.trim();
-      if (text) {
-        appendMessage("user", text);
-        elements.chatInput.value = "";
-        elements.chatInput.style.height = "auto";
-        elements.chatInput.placeholder = elements.chatInput.dataset.placeholderDefault || "Ask MAX anything...";
-        elements.sendBtn.disabled = true;
-        elements.sendBtn.classList.remove("active");
-        submitQuery(text);
+      const attached = state.currentAttachment;
+
+      if (!text && !attached) return;
+
+      let displayText = text;
+      let queryText = text;
+
+      if (attached) {
+        displayText = text ? `📎 [Attached: ${attached.name}]\n${text}` : `📎 [Attached: ${attached.name}]`;
+        queryText = text ? `[Attached File: ${attached.name}]\n${text}` : `Please analyze the attached file: ${attached.name}`;
+
+        // If text-like file, read content excerpt
+        if (
+          attached.type.startsWith("text/") ||
+          attached.name.endsWith(".txt") ||
+          attached.name.endsWith(".py") ||
+          attached.name.endsWith(".js") ||
+          attached.name.endsWith(".json") ||
+          attached.name.endsWith(".md")
+        ) {
+          try {
+            const fileContent = await attached.text();
+            if (fileContent) {
+              queryText += `\n\n--- Content of ${attached.name} ---\n${fileContent.slice(0, 3000)}`;
+            }
+          } catch (err) {}
+        }
       }
+
+      // Add user's message as a new chat bubble in the conversation
+      appendMessage("user", displayText);
+
+      // Clear the input and reset height after sending
+      elements.chatInput.value = "";
+      elements.chatInput.style.height = "auto";
+      elements.chatInput.placeholder = elements.chatInput.dataset.placeholderDefault || "Type a message...";
+      
+      // Reset send button back to voice mode
+      elements.sendBtn.classList.remove("mode-send");
+      elements.sendBtn.classList.add("mode-voice");
+      elements.sendBtn.title = "Voice Input";
+
+      // Reset attachment
+      state.currentAttachment = null;
+      if (elements.attachmentInput) elements.attachmentInput.value = "";
+      if (elements.attachmentPreview) elements.attachmentPreview.classList.add("hidden");
+
+      // Send to existing AI backend
+      submitQuery(queryText);
     });
   }
 
