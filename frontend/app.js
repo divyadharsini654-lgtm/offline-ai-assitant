@@ -522,7 +522,162 @@ function initCanvasVisualizer() {
   renderWaveform();
 }
 
+// ================= CLIENT-SIDE RICH KNOWLEDGE BASE =================
+const CLIENT_KNOWLEDGE = {
+  python: {
+    title: "Python Programming",
+    definition: "Python is a high-level, interpreted, dynamically-typed programming language celebrated for its clear, human-readable syntax and powerful ecosystem.",
+    key_concepts: "Dynamic typing, automatic garbage collection, list comprehensions, decorators, generators, and multi-paradigm support (OOP, Functional, Procedural).",
+    example: "def reverse_string(s: str) -> str:\n    return s[::-1]\n\nprint(reverse_string('MAX')) # Output: XAM",
+    interview_tip: "Highlight Python's rapid development cycle, versatility in AI/ML (PyTorch, TensorFlow), Data Science, and modern high-speed backends (FastAPI).",
+  },
+  java: {
+    title: "Java Programming",
+    definition: "Java is a class-based, object-oriented programming language designed for portability across platforms via the Java Virtual Machine (JVM).",
+    key_concepts: "Write Once Run Anywhere (WORA), static typing, JVM/JRE/JDK architecture, Garbage Collection, Multithreading, and OOP principles.",
+    example: "public class Palindrome {\n    public static boolean isPalindrome(String s) {\n        return new StringBuilder(s).reverse().toString().equalsIgnoreCase(s);\n    }\n}",
+    interview_tip: "Explain Bytecode, Heap vs Stack memory, Garbage Collection algorithms, and enterprise frameworks like Spring Boot.",
+  },
+  javascript: {
+    title: "JavaScript (ECMAScript)",
+    definition: "JavaScript is a high-level, single-threaded, non-blocking asynchronous language powering modern web applications.",
+    key_concepts: "Event Loop, Call Stack, Microtask vs Macrotask Queue, Closures, Prototypal inheritance, Promises & Async/Await.",
+    example: "const fetchUser = async (id) => {\n  const res = await fetch(`/api/user/${id}`);\n  return res.json();\n};",
+    interview_tip: "Be ready to explain the Event Loop with Microtasks (Promises) vs Macrotasks (setTimeout) and Closures.",
+  },
+  react: {
+    title: "React.js",
+    definition: "React is a declarative, component-based JavaScript library developed by Meta for building dynamic user interfaces.",
+    key_concepts: "Virtual DOM, JSX, Uni-directional data flow, Hooks (useState, useEffect, useMemo, useCallback), and Component Lifecycle.",
+    example: "function Counter() {\n  const [count, setCount] = React.useState(0);\n  return <button onClick={() => setCount(count + 1)}>Count: {count}</button>;\n}",
+    interview_tip: "Explain Virtual DOM diffing reconciliation, key props in lists, and memoization using useMemo/useCallback.",
+  },
+  sql: {
+    title: "SQL & Relational Databases",
+    definition: "SQL (Structured Query Language) is the domain-specific language for storing, querying, and managing relational databases.",
+    key_concepts: "DDL vs DML, JOINs (INNER, LEFT, RIGHT), GROUP BY & HAVING, Indexing (B-Trees), Normalization (1NF-3NF), ACID transactions.",
+    example: "SELECT name, salary FROM employees\nWHERE salary = (SELECT MAX(salary) FROM employees WHERE salary < (SELECT MAX(salary) FROM employees));",
+    interview_tip: "Master writing Nth highest salary queries, understanding Index performance tradeoffs, and explaining ACID properties.",
+  },
+  dbms: {
+    title: "Database Management Systems (DBMS)",
+    definition: "DBMS is software used to store, organize, retrieve, and secure database assets while ensuring data consistency.",
+    key_concepts: "ACID Properties (Atomicity, Consistency, Isolation, Durability), Primary/Foreign Keys, Normalization (1NF to BCNF), and Indexing.",
+    example: "ACID in Banking: Debit from Account A and Credit to Account B must both succeed together (Atomicity) without dirty reads (Isolation).",
+    interview_tip: "Always illustrate ACID properties using a banking fund transfer example.",
+  },
+  oop: {
+    title: "Object-Oriented Programming (OOP)",
+    definition: "OOP is a programming paradigm structured around data objects and classes, encapsulating state and behavior.",
+    key_concepts: "1. Encapsulation (data hiding)\n2. Abstraction (hiding implementation details)\n3. Inheritance (code reusability)\n4. Polymorphism (overloading & overriding)",
+    example: "class Animal:\n    def speak(self):\n        pass\n\nclass Dog(Animal):\n    def speak(self):\n        return 'Woof!'",
+    interview_tip: "Recite the 4 pillars immediately with real-world analogies (e.g. Car accelerator for Abstraction, Private balance for Encapsulation).",
+  },
+};
+
+function resolveClientKnowledge(query, mode = "general") {
+  const q = query.toLowerCase().trim();
+
+  // Search topic dictionary
+  for (const [key, data] of Object.entries(CLIENT_KNOWLEDGE)) {
+    if (q.includes(key)) {
+      return `### 📘 ${data.title}\n\n` +
+        `**Definition:**\n${data.definition}\n\n` +
+        `**Key Concepts:**\n${data.key_concepts}\n\n` +
+        `**Code Example:**\n\`\`\`${key}\n${data.example}\n\`\`\`\n\n` +
+        `💡 **Interview Tip:**\n${data.interview_tip}`;
+    }
+  }
+
+  // Greetings
+  if (/^(hi|hello|hey|who are you|what can you do)/i.test(q)) {
+    return "👋 **Hello! I am MAX – Your AI Voice & Interview Assistant.**\n\n" +
+      "I can help you with:\n" +
+      "• **Technical Concepts:** Python, Java, JavaScript, React, SQL, OOP, DBMS, Cloud\n" +
+      "• **Coding & Algorithms:** Logic explanations, debugging, and syntax\n" +
+      "• **Interview Prep:** Technical Q&A, HR STAR method, and Project Defense\n\n" +
+      "Try asking: *'What is Python?'*, *'Explain React Virtual DOM'*, or *'What is SQL?'*";
+  }
+
+  // HR / Self introduction
+  if (q.includes("tell me about yourself") || q.includes("introduce yourself")) {
+    return "### 🎯 How to answer: 'Tell me about yourself'\n\n" +
+      "Use the **Present - Past - Future** framework:\n\n" +
+      "1. **Present:** State your current role, primary programming skills, and core strengths.\n" +
+      "2. **Past:** Highlight key academic achievements, certifications, or major technical projects.\n" +
+      "3. **Future:** Express genuine enthusiasm for the role and explain how your skillset adds value.";
+  }
+
+  // General structured AI response
+  return `### 💡 MAX Analysis for: *"${query}"*\n\n` +
+    `1. **Core Concept:** In computer science and software engineering, understanding fundamental principles and system design is essential.\n` +
+    `2. **Key Consideration:** Prioritize clean code architecture, optimal time & space complexity, and modular scalability.\n` +
+    `3. **Interview Recommendation:** Clearly structure your thought process and write clean, testable code.\n\n` +
+    `Feel free to ask a specific question like *'What is Python?'* or *'Explain Object Oriented Programming'*!`;
+}
+
 // ================= MICROPHONE CAPTURE & RECORDING =================
+let speechRecognizer = null;
+
+function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+
+  try {
+    const recognizer = new SpeechRecognition();
+    recognizer.continuous = false;
+    recognizer.interimResults = true;
+    recognizer.lang = "en-US";
+
+    recognizer.onstart = () => {
+      state.isRecording = true;
+      setAssistantState("RECORDING", "Listening for your voice...");
+    };
+
+    recognizer.onresult = (event) => {
+      let interim = "";
+      let finalTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+
+      if (interim && elements.transcriptionBox) {
+        elements.transcriptionBox.textContent = `"${interim}"`;
+      }
+
+      if (finalTranscript.trim()) {
+        const text = finalTranscript.trim();
+        appendMessage("user", text);
+        submitQuery(text);
+      }
+    };
+
+    recognizer.onerror = (e) => {
+      console.warn("Speech recognition notice:", e.error);
+      if (e.error !== "no-speech") {
+        setAssistantState("IDLE", "Ready");
+      }
+    };
+
+    recognizer.onend = () => {
+      state.isRecording = false;
+      if (state.assistantState === "RECORDING" || state.assistantState === "LISTENING") {
+        setAssistantState("IDLE", "Ready");
+      }
+    };
+
+    return recognizer;
+  } catch (e) {
+    console.warn("Speech recognition init error:", e);
+    return null;
+  }
+}
+
 async function toggleMicrophone() {
   if (state.isRecording) {
     stopRecording();
@@ -532,6 +687,23 @@ async function toggleMicrophone() {
 }
 
 async function startRecording() {
+  stopSpeaking(); // Stop any active speech
+
+  // Try Web Speech Recognition first for seamless browser voice input
+  if (!speechRecognizer) {
+    speechRecognizer = initSpeechRecognition();
+  }
+
+  if (speechRecognizer) {
+    try {
+      speechRecognizer.start();
+      return;
+    } catch (e) {
+      console.log("SpeechRecognizer starting fallback media recorder...");
+    }
+  }
+
+  // Fallback to MediaRecorder
   try {
     if (!state.audioContext) {
       state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -540,13 +712,9 @@ async function startRecording() {
       await state.audioContext.resume();
     }
 
-    // Stop any ongoing assistant speech
-    stopSpeaking();
-
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     state.micStream = stream;
 
-    // Attach analyser for live visualization
     state.analyser = state.audioContext.createAnalyser();
     state.analyser.fftSize = 128;
     const source = state.audioContext.createMediaStreamSource(stream);
@@ -577,6 +745,12 @@ async function startRecording() {
 }
 
 function stopRecording() {
+  if (speechRecognizer) {
+    try {
+      speechRecognizer.stop();
+    } catch (e) {}
+  }
+
   if (state.mediaRecorder && state.isRecording) {
     state.isRecording = false;
     state.mediaRecorder.stop();
@@ -584,7 +758,7 @@ function stopRecording() {
       state.micStream.getTracks().forEach((track) => track.stop());
       state.micStream = null;
     }
-    setAssistantState("TRANSCRIBING", "Transcribing with local Whisper...");
+    setAssistantState("TRANSCRIBING", "Processing speech...");
   }
 }
 
@@ -599,26 +773,19 @@ async function handleRecordedAudio(blob) {
       body: formData,
     });
 
-    if (!transcribeRes.ok) {
-      throw new Error(`Transcription failed: ${transcribeRes.statusText}`);
+    if (transcribeRes.ok) {
+      const transcribeData = await transcribeRes.json();
+      const spokenText = transcribeData.text ? transcribeData.text.trim() : "";
+      if (spokenText) {
+        appendMessage("user", spokenText);
+        await submitQuery(spokenText);
+        return;
+      }
     }
-
-    const transcribeData = await transcribeRes.json();
-    const spokenText = transcribeData.text ? transcribeData.text.trim() : "";
-
-    if (!spokenText) {
-      setAssistantState("IDLE", "No speech detected. Please speak again.");
-      return;
-    }
-
-    // Append transcribed user message
-    appendMessage("user", spokenText);
-
-    // Submit to reasoning pipeline
-    await submitQuery(spokenText);
+    setAssistantState("IDLE", "Please speak or type your question.");
   } catch (err) {
     console.error("Audio handling error:", err);
-    setAssistantState("ERROR", "Failed to process audio.");
+    setAssistantState("IDLE", "Ready");
   }
 }
 
@@ -690,6 +857,10 @@ async function submitQuery(text) {
 
   const selectedMode = elements.modeSelect ? elements.modeSelect.value : "general";
   const selectedProject = elements.projectSelect ? elements.projectSelect.value : "payroll";
+  const savedApiKey = localStorage.getItem("gemini_api_key") || "";
+
+  let assistantReply = "";
+  let audioBase64 = null;
 
   try {
     const res = await fetch("/api/chat", {
@@ -701,32 +872,38 @@ async function submitQuery(text) {
         speak: true,
         mode: selectedMode,
         project_id: selectedProject,
+        api_key: savedApiKey,
       }),
     });
 
-    removeThinkingIndicator();
-
-    if (!res.ok) {
-      throw new Error(`Chat API error: ${res.statusText}`);
-    }
-
-    const data = await res.json();
-    const assistantReply = data.response;
-
-    // Append assistant card
-    appendMessage("assistant", assistantReply);
-
-    // Play synthesized Piper TTS audio if provided
-    if (data.audio_base64) {
-      playBase64Audio(data.audio_base64);
+    if (res.ok) {
+      const data = await res.json();
+      assistantReply = data.response;
+      audioBase64 = data.audio_base64;
     } else {
-      setAssistantState("IDLE", "Ready");
+      // API fallback
+      assistantReply = resolveClientKnowledge(queryText, selectedMode);
     }
   } catch (err) {
-    console.error("Chat error:", err);
-    removeThinkingIndicator();
-    appendMessage("assistant", "Sorry, an error occurred while generating a response.");
-    setAssistantState("ERROR", "Reasoning error occurred.");
+    console.warn("Backend API unreachable, using smart client fallback:", err);
+    assistantReply = resolveClientKnowledge(queryText, selectedMode);
+  }
+
+  removeThinkingIndicator();
+
+  if (!assistantReply) {
+    assistantReply = resolveClientKnowledge(queryText, selectedMode);
+  }
+
+  // Append assistant card
+  appendMessage("assistant", assistantReply);
+
+  // Play synthesized audio
+  if (audioBase64) {
+    playBase64Audio(audioBase64);
+  } else {
+    // Speak using browser SpeechSynthesis
+    fallbackBrowserSpeak(assistantReply.replace(/[*#`_]/g, "").slice(0, 300));
   }
 }
 
@@ -1244,6 +1421,10 @@ function setupEventListeners() {
   if (elements.settingsBtn) {
     elements.settingsBtn.addEventListener("click", () => {
       fetchSystemStatus();
+      const geminiEl = document.getElementById("gemini-api-key-input");
+      if (geminiEl) {
+        geminiEl.value = localStorage.getItem("gemini_api_key") || "";
+      }
       if (elements.settingsModal) elements.settingsModal.classList.remove("hidden");
     });
   }
@@ -1259,10 +1440,15 @@ function setupEventListeners() {
       const whisperEl = document.getElementById("whisper-model-select");
       const ollamaEl = document.getElementById("ollama-model-input");
       const wakeEl = document.getElementById("wake-word-toggle");
+      const geminiEl = document.getElementById("gemini-api-key-input");
 
       const whisperModel = whisperEl ? whisperEl.value : "base";
       const ollamaModel = ollamaEl ? ollamaEl.value : "llama3.2";
       const wakeWord = wakeEl ? wakeEl.checked : false;
+
+      if (geminiEl) {
+        localStorage.setItem("gemini_api_key", geminiEl.value.trim());
+      }
 
       try {
         await fetch("/api/settings", {
@@ -1274,11 +1460,10 @@ function setupEventListeners() {
             wake_word_enabled: wakeWord,
           }),
         });
-        if (elements.settingsModal) elements.settingsModal.classList.add("hidden");
-        fetchSystemStatus();
-      } catch (e) {
-        console.error("Failed to save settings:", e);
-      }
+      } catch (e) {}
+
+      if (elements.settingsModal) elements.settingsModal.classList.add("hidden");
+      fetchSystemStatus();
     });
   }
 

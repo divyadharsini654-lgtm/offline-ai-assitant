@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MAX – Offline Voice-Based AI Assistant</title>
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="/static/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -429,6 +430,12 @@
             <small class="hint-text">Piper ONNX neural voice with local pyttsx3 fallback</small>
           </div>
 
+          <div class="setting-group">
+            <label for="gemini-api-key-input">Google Gemini API Key (Optional Cloud LLM)</label>
+            <input type="password" id="gemini-api-key-input" class="custom-input" placeholder="AIzaSy... (Leave empty for Offline AI)" />
+            <small class="hint-text">Get free API key at aistudio.google.com for cloud intelligence</small>
+          </div>
+
           <div class="setting-group checkbox-group">
             <label class="switch-label">
               <input type="checkbox" id="wake-word-toggle" />
@@ -450,6 +457,13 @@
     </div>
   </div>
 
-  <script src="./app.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if (typeof initStartup !== 'function') {
+      const s = document.createElement('script');
+      s.src = '/static/app.js';
+      document.body.appendChild(s);
+    }
+  </script>
 </body>
 </html>
