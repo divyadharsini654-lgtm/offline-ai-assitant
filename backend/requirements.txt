@@ -32,7 +32,7 @@ soundfile==0.13.1
 # Speech-to-Text
 # -----------------------------
 setuptools<81
-openai-whisper==20240930
+openai-whisper
 
 # -----------------------------
 # Text-to-Speech
