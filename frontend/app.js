@@ -3,9 +3,24 @@
  * Frontend Application Logic, Futuristic Audio Visualizer, and State Manager
  */
 
+/* ================= BACKEND CONFIGURATION =================
+   Deployed Render backend
+*/
+const BACKEND_URL = "https://offline-ai-assitant-9.onrender.com";
+
+function apiUrl(path) {
+  return `${BACKEND_URL}${path}`;
+}
+
+function websocketUrl(path) {
+  const url = new URL(BACKEND_URL);
+  const protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${url.host}${path}`;
+}
+
 // Application State
 const state = {
-  assistantState: "IDLE", // IDLE, LISTENING, RECORDING, TRANSCRIBING, THINKING, SPEAKING, ERROR
+  assistantState: "IDLE",
   conversationId: "default",
   isRecording: false,
   isPlayingAudio: false,
@@ -154,7 +169,7 @@ async function initStartup() {
 // ================= SYSTEM STATUS & HEALTH =================
 async function fetchSystemStatus() {
   try {
-    const res = await fetch("/api/status");
+    const res = await fetch("https://offline-ai-assitant-9.onrender.com/api/status");
     if (res.ok) {
       const data = await res.json();
       state.modelsStatus = data;
@@ -204,8 +219,7 @@ function updateStatusUI(status) {
 
 // ================= WEBSOCKET FOR REAL-TIME EVENTS =================
 function connectWebSocket() {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const wsUrl = `${protocol}//${window.location.host}/ws`;
+  const wsUrl = "wss://offline-ai-assitant-9.onrender.com/ws";
 
   try {
     state.ws = new WebSocket(wsUrl);
@@ -217,6 +231,7 @@ function connectWebSocket() {
     state.ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
+
         if (msg.type === "state_change") {
           setAssistantState(msg.state, msg.message);
         }
@@ -416,8 +431,8 @@ function initCanvasVisualizer() {
       ctx.fillStyle = state.assistantState === "SPEAKING"
         ? `rgba(52, 211, 153, ${p.alpha})`
         : state.assistantState === "LISTENING" || state.assistantState === "RECORDING"
-        ? `rgba(56, 189, 248, ${p.alpha})`
-        : `rgba(165, 180, 252, ${p.alpha * 0.8})`;
+          ? `rgba(56, 189, 248, ${p.alpha})`
+          : `rgba(165, 180, 252, ${p.alpha * 0.8})`;
       ctx.fill();
     }
 
@@ -507,8 +522,8 @@ function initCanvasVisualizer() {
       const sparkColor = state.assistantState === "SPEAKING"
         ? "#34d399"
         : state.assistantState === "LISTENING" || state.assistantState === "RECORDING"
-        ? "#38bdf8"
-        : "#818cf8";
+          ? "#38bdf8"
+          : "#818cf8";
       ctx.fillStyle = sparkColor;
       ctx.shadowColor = sparkColor;
       ctx.shadowBlur = 10;
@@ -748,7 +763,7 @@ function stopRecording() {
   if (speechRecognizer) {
     try {
       speechRecognizer.stop();
-    } catch (e) {}
+    } catch (e) { }
   }
 
   if (state.mediaRecorder && state.isRecording) {
@@ -768,7 +783,7 @@ async function handleRecordedAudio(blob) {
     const formData = new FormData();
     formData.append("file", blob, "input_audio.webm");
 
-    const transcribeRes = await fetch("/api/transcribe", {
+    const transcribeRes = await fetch("https://offline-ai-assitant-9.onrender.com/api/transcribe", {
       method: "POST",
       body: formData,
     });
@@ -863,7 +878,7 @@ async function submitQuery(text) {
   let audioBase64 = null;
 
   try {
-    const res = await fetch("/api/chat", {
+    const res = await fetch("https://offline-ai-assitant-9.onrender.com/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -962,13 +977,13 @@ function stopSpeaking() {
     try {
       state.currentAudioPlayer.pause();
       state.currentAudioPlayer.currentTime = 0;
-    } catch (e) {}
+    } catch (e) { }
     state.currentAudioPlayer = null;
   }
   state.isPlayingAudio = false;
 
   // Signal backend to abort sounddevice / audio buffer
-  fetch("/api/stop", { method: "POST" }).catch(() => {});
+  const res = await fetch("https://offline-ai-assitant-9.onrender.com/api/speak", { method: "POST" }).catch(() => { });
 
   if (state.assistantState === "SPEAKING") {
     setAssistantState("IDLE", "Playback stopped.");
@@ -992,7 +1007,7 @@ async function speakMessageText(text, btn) {
   btn.disabled = true;
 
   try {
-    const res = await fetch("/api/speak", {
+    const res = await fetch("https://offline-ai-assitant-9.onrender.com/api/speak", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
@@ -1150,7 +1165,7 @@ function appendMessage(role, content) {
 
 async function loadConversationHistory() {
   try {
-    const res = await fetch(`/api/conversations?conversation_id=${state.conversationId}`);
+    const res = await fetch(`https://offline-ai-assitant-9.onrender.com/api/conversations?conversation_id=${state.conversationId}`);
     if (res.ok) {
       const data = await res.json();
       if (data.messages && data.messages.length > 0) {
@@ -1374,7 +1389,7 @@ function setupEventListeners() {
             if (fileContent) {
               queryText += `\n\n--- Content of ${attached.name} ---\n${fileContent.slice(0, 3000)}`;
             }
-          } catch (err) {}
+          } catch (err) { }
         }
       }
 
@@ -1385,7 +1400,7 @@ function setupEventListeners() {
       elements.chatInput.value = "";
       elements.chatInput.style.height = "auto";
       elements.chatInput.placeholder = elements.chatInput.dataset.placeholderDefault || "Type a message...";
-      
+
       // Reset send button back to voice mode
       elements.sendBtn.classList.remove("mode-send");
       elements.sendBtn.classList.add("mode-voice");
@@ -1451,7 +1466,7 @@ function setupEventListeners() {
       }
 
       try {
-        await fetch("/api/settings", {
+        await fetch("https://offline-ai-assitant-9.onrender.com/api/settings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1460,7 +1475,7 @@ function setupEventListeners() {
             wake_word_enabled: wakeWord,
           }),
         });
-      } catch (e) {}
+      } catch (e) { }
 
       if (elements.settingsModal) elements.settingsModal.classList.add("hidden");
       fetchSystemStatus();
