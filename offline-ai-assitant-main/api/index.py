@@ -237,6 +237,31 @@ def resolve_offline_query(query: str, mode: str = "general") -> str:
 # =============================================================================
 # API ENDPOINTS
 # =============================================================================
+@app.get("/")
+def root():
+    return {
+        "message": "Backend is running successfully!",
+        "app": "MAX AI Assistant",
+        "status": "online"
+    }
+
+
+@app.get("/api")
+def api_root():
+    return {
+        "message": "Backend is running successfully!",
+        "status": "online",
+        "health": "/api/health"
+    }
+
+
+@app.get("/api/hello")
+def hello():
+    return {
+        "message": "Backend is running successfully!"
+    }
+
+
 @app.get("/api/health")
 def health_check():
     return {

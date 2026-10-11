@@ -59,6 +59,12 @@ class SettingsUpdateRequest(BaseModel):
     wake_word_enabled: Optional[bool] = None
 
 
+@router.get("/hello")
+def hello():
+    """Test endpoint."""
+    return {"message": "Backend is running successfully!"}
+
+
 @router.get("/health")
 def health_check():
     """Health check endpoint."""

@@ -33,8 +33,8 @@ from backend.memory.database import memory_db
 
 offline_engine = FallbackEngine()
 
-PORT = 8000
-HOST = "127.0.0.1"
+PORT = int(os.environ.get("PORT", 8000))
+HOST = os.environ.get("HOST", "0.0.0.0")
 
 
 class MaxRequestHandler(SimpleHTTPRequestHandler):
@@ -64,6 +64,20 @@ class MaxRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+
+        if path.startswith("/static/"):
+            self.path = "/" + path[len("/static/"):]
+            return super().do_GET()
+
+        if path == "/ws":
+            self._send_json(200, {"status": "websocket_polling_mode"})
+            return
+
+        if path in ("/api/hello", "/hello"):
+            self._send_json(200, {
+                "message": "Backend is running successfully!"
+            })
+            return
 
         if path == "/api/health":
             self._send_json(200, {
@@ -206,16 +220,17 @@ def open_browser(url):
 
 
 def run_server():
-    url = f"http://{HOST}:{PORT}"
+    display_url = f"http://localhost:{PORT}" if HOST == "0.0.0.0" else f"http://{HOST}:{PORT}"
     logger.info("=" * 60)
-    logger.info("🚀 MAX OFFLINE VOICE AI ASSISTANT - LOCALHOST SERVER")
-    logger.info(f"🔗 LOCALHOST URL: {url}")
+    logger.info("🚀 MAX OFFLINE VOICE AI ASSISTANT - SERVER")
+    logger.info(f"🔗 LOCAL ACCESS: {display_url}")
+    logger.info(f"🌐 BINDING HOST: {HOST}:{PORT}")
     logger.info("=" * 60)
 
     server = HTTPServer((HOST, PORT), MaxRequestHandler)
-    logger.info(f"Server actively listening on {url} (Press Ctrl+C to stop)")
+    logger.info(f"Server actively listening on {HOST}:{PORT} (Press Ctrl+C to stop)")
 
-    threading.Thread(target=open_browser, args=(url,), daemon=True).start()
+    threading.Thread(target=open_browser, args=(display_url,), daemon=True).start()
 
     try:
         server.serve_forever()
